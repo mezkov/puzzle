@@ -97,10 +97,11 @@ pieces = [
   },
   {
     'shape': [
-      [1, 1, 1],
-      [1, 1, 1]
+      [1, 1],
+      [1, 1],
+      [1, 1]
     ],
-    'rotate': 1 
+    'rotate': 2 
   }, 
 ]
 
@@ -108,32 +109,17 @@ def printPicture(picture):
   rows = len(picture)
   cols = len(picture[0])
    
-  for row in range(-1, rows):    
+  for row in range(rows):    
     row_str = ""
-    for col in range(-1, cols):
-      act = 0
-      if row >= 0 and col >= 0:
-        act = picture[row][col]
-        
-      next_col = 0
-      if row >= 0 and col + 1 != cols:
-        next_col = picture[row][col + 1]
-        
-      next_row = 0
-      if row + 1 != rows and col >= 0:
-        next_row = picture[row + 1][col]
-
-      if act != next_row:
-        row_str += "_"
+    for col in range(cols):
+      act = picture[row][col]
+      if  act <= 0:
+        row_str += " --"
       else:
-        row_str += " "
-       
-      if act != next_col:
-        row_str += "|"
-      else:
-        row_str += " "
+        row_str += "{:3}".format(act)
     
     print(row_str)
+  print()
 
 def insertShape(board, shape, x, y):
   for shape_row in range(len(shape)):
@@ -203,39 +189,55 @@ def canBePlacedInCorner(shape, corner):
   
 #sdef findFirstEmpty(board):
   
-
-def placeShape(board, unused_pieces):
-  piece_idx = next(iter(unused_pieces))
-  piece = pieces[piece_idx]
-  shape = piece['shape']
-  
-  for rot in range(piece['rotate']):
-    if rot > 0:
-      shape = rotateShape(shape)
+def findFirstEmptyPoint(board):
+  for y in range(len(board)):
+    for x in range(len(board[0])):
+      if board[y][x] <= 0:
+        return (x,y)
     
-    for x in range(8 - len(shape[0]) + 1):
-      for y in range(8 - len(shape) + 1):
-        if insertShape(board, shape, x, y):
-          new_unused_pieces = unused_pieces.copy()
-          new_unused_pieces.pop(piece_idx)
-          
-          if not new_unused_pieces:
-            print("Heureka!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            printPicture(board)
-            
-            with open('results', 'a') as f:
-              original_stdout = sys.stdout
-              sys.stdout = f 
-              printPicture(board)
-              sys.stdout = original_stdout 
-            
-          else:
-            placeShape(board, new_unused_pieces)
-            
-          removeShape(board, shape, x, y)
+def findFirstFilledPoint(shape):
+  for y in range(len(shape)):
+    for x in range(len(shape[0])):
+      if shape[y][x] > 0:
+        return x, y
+
+def placeShape(board, unused_pieces, setup):
+  x, y = findFirstEmptyPoint(board)
   
-  if shape_idx < 6:
-    print(shape_idx)
+  for piece_idx in unused_pieces:
+    setup.append(piece_idx)
+    piece = pieces[piece_idx]
+    shape = piece['shape']
+  
+    for rot in range(piece['rotate']):
+      if rot > 0:
+        shape = rotateShape(shape)
+        
+      shape_x, shape_y = findFirstFilledPoint(shape)
+      if x - shape_x + len(shape[0]) > 8 or y - shape_y + len(shape) > 8 or x < shape_x or y < shape_y:
+        continue
+    
+      setup.append(rot)
+      if insertShape(board, shape, x - shape_x, y - shape_y):
+        new_unused_pieces = unused_pieces.copy()
+        new_unused_pieces.pop(piece_idx)
+
+        if not new_unused_pieces:
+#          print("Heureka!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+          printPicture(board)
+          print(setup)
+          
+          with open('solutions', 'a') as f:
+            original_stdout = sys.stdout
+            sys.stdout = f 
+            printPicture(board)
+            sys.stdout = original_stdout           
+        else:
+          placeShape(board, new_unused_pieces, setup)
+          
+        removeShape(board, shape, x - shape_x, y - shape_y)  
+      setup.pop()
+    setup.pop()
     
 def placeShapeToCorner(board, unused_pieces, corner, setup): 
   for piece_idx in unused_pieces:
@@ -264,9 +266,9 @@ def placeShapeToCorner(board, unused_pieces, corner, setup):
           if corner < 3:
             placeShapeToCorner(board, new_unused_pieces, corner + 1, setup)
           else:
-            printPicture(board)
-            print(setup)
-            placeShape(board, new_unused_pieces)
+#            printPicture(board)
+#            print(setup)
+            placeShape(board, new_unused_pieces, setup)
           
           removeShape(board, shape, x, y)
               
